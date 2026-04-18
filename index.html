@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VoyageAI — AI-Powered Travel Planning</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✈️</text></svg>">
+
+  <!-- Leaflet CSS (free interactive maps, no API key needed) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+
+  <!-- Google Identity Services (real OAuth) -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/pages.css">
+</head>
+<body>
+
+<!-- NAVBAR (hidden on auth pages) -->
+<nav class="navbar" id="main-navbar" style="display:none">
+  <a class="logo" data-page="planner">
+    <div class="logo-icon">✈️</div>
+    <div class="logo-name">Voyage<span>AI</span></div>
+  </a>
+  <div class="nav-links">
+    <a class="nav-link" data-page="planner">Plan Trip</a>
+    <a class="nav-link" data-page="mytrips">My Trips</a>
+    <a class="nav-link" data-page="account">Account</a>
+  </div>
+  <div class="nav-user">
+    <span class="user-name">Guest</span>
+    <div class="user-avatar" id="nav-avatar-btn" title="Go to account">?</div>
+  </div>
+</nav>
+
+<!-- AI LOADING OVERLAY -->
+<div id="ai-loading-overlay" class="hidden">
+  <div class="ai-loading-orb">🤖</div>
+  <div class="ai-loading-text" id="ai-loading-msg">Reading your special requests…</div>
+  <div class="ai-loading-sub">AI is crafting your perfect trip</div>
+  <div class="ai-loading-dots"><span></span><span></span><span></span></div>
+</div>
+
+<!-- TOASTS -->
+<div id="toast-container"></div>
+
+
+<!-- ╔════ PAGE 1: LOGIN ════╗ -->
+<div id="page-login" class="page active">
+  <div class="auth-layout">
+    <div class="auth-left">
+      <div class="orb orb-1"></div><div class="orb orb-2"></div>
+      <div class="orb orb-3"></div><div class="orb orb-4"></div>
+      <div class="auth-grid"></div>
+      <div class="auth-left-content">
+        <a class="auth-logo" data-page="login">
+          <div class="auth-logo-icon">✈️</div>
+          <div class="auth-logo-name">Voyage<span>AI</span></div>
+        </a>
+        <div class="auth-hero">
+          <div class="auth-hero-tag">✦ AI-Powered Travel Planning</div>
+          <h1>Your next<br>adventure,<br><em>reimagined.</em></h1>
+          <p>Tell VoyageAI your budget, vibe, and dreams — we'll craft the perfect itinerary in seconds using an open-source AI model.</p>
+        </div>
+        <div class="dest-cards-row">
+          <div class="dest-mini-card">
+            <span class="flag">🏝️</span>
+            <div><div class="name">Bali, Indonesia</div><div class="price">From $820 · 7 days</div></div>
+          </div>
+          <div class="dest-mini-card">
+            <span class="flag">🗼</span>
+            <div><div class="name">Paris, France</div><div class="price">From $1,240 · 5 days</div></div>
+          </div>
+        </div>
+        <div class="auth-stats">
+          <div><div class="stat-num">180+</div><div class="stat-label">Destinations</div></div>
+          <div><div class="stat-num">50K</div><div class="stat-label">Trips Generated</div></div>
+          <div><div class="stat-num">4.9★</div><div class="stat-label">Avg. Rating</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="auth-right">
+      <div class="auth-form-wrap">
+        <div class="auth-form-head">
+          <h2>Welcome back 👋</h2>
+          <p>New here? <a data-page="signup">Create a free account</a></p>
+        </div>
+
+        <div class="auth-tabs">
+          <div class="auth-tab active" data-target="login">Log In</div>
+          <div class="auth-tab" data-target="signup">Sign Up</div>
+        </div>
+
+        <!-- Google Sign-In (real OAuth when configured) -->
+        <div class="google-signin-slot">
+          <div id="google-signin-login"></div>
+        </div>
+
+        <div class="setup-needed-notice google-setup-notice">
+          <strong>🔐 Sign in with Google</strong><br>
+          To enable real Google OAuth: create an email account first, then add your Google Client ID
+          in <a data-page="account">Account settings</a> (setup instructions included).
+        </div>
+
+        <div class="divider-or"><span>or continue with email</span></div>
+
+        <form id="login-form">
+          <div class="field">
+            <label>Email Address</label>
+            <div class="input-icon-wrap">
+              <input type="email" id="login-email" placeholder="you@example.com" autocomplete="email">
+              <span class="input-end-icon">✉</span>
+            </div>
+          </div>
+          <div class="field">
+            <label>Password</label>
+            <div class="input-icon-wrap">
+              <input type="password" id="login-pass" placeholder="••••••••••" autocomplete="current-password">
+              <span class="input-end-icon" id="login-pass-toggle">👁</span>
+            </div>
+          </div>
+          <div class="forgot-link"><a>Forgot password?</a></div>
+          <button type="submit" class="btn btn-primary" style="width:100%;padding:15px;font-size:15px;border-radius:14px">Sign In →</button>
+        </form>
+        <div class="trust-line">🔒 Your data stays on your device · No server required</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ╔════ PAGE 2: SIGNUP ════╗ -->
+<div id="page-signup" class="page">
+  <div class="auth-layout">
+    <div class="auth-left">
+      <div class="orb orb-1" style="background:var(--teal);right:-60px;left:auto;top:-60px"></div>
+      <div class="orb orb-2" style="background:var(--orange);bottom:80px;left:-60px"></div>
+      <div class="orb orb-3"></div><div class="orb orb-4"></div>
+      <div class="auth-grid"></div>
+      <div class="auth-left-content">
+        <a class="auth-logo" data-page="login">
+          <div class="auth-logo-icon">✈️</div>
+          <div class="auth-logo-name">Voyage<span>AI</span></div>
+        </a>
+        <div class="auth-hero" style="margin-bottom:24px">
+          <div class="auth-hero-tag">✦ Join 50,000+ Explorers</div>
+          <h1>Join 50,000+<br><em>explorers</em><br>worldwide.</h1>
+          <p>Create your free account and let AI build the perfect trip for you.</p>
+        </div>
+        <div class="steps-list">
+          <div class="step-row">
+            <div class="step-dot done">✓</div>
+            <div><div class="step-info-label">Step 1</div><div class="step-info-name">Choose account type</div></div>
+          </div>
+          <div class="step-row">
+            <div class="step-dot current">2</div>
+            <div><div class="step-info-label">Step 2 · Current</div><div class="step-info-name">Create your account</div></div>
+          </div>
+          <div class="step-row">
+            <div class="step-dot upcoming">3</div>
+            <div><div class="step-info-label">Step 3</div><div class="step-info-name dim">Set your preferences</div></div>
+          </div>
+          <div class="step-row">
+            <div class="step-dot upcoming">4</div>
+            <div><div class="step-info-label">Step 4</div><div class="step-info-name dim">Generate your first trip!</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="auth-right">
+      <div class="auth-form-wrap">
+        <div class="auth-form-head">
+          <h2>Create Account ✨</h2>
+          <p>Already have one? <a data-page="login">Sign in here</a></p>
+        </div>
+        <div class="auth-tabs">
+          <div class="auth-tab" data-target="login">Log In</div>
+          <div class="auth-tab active" data-target="signup">Sign Up</div>
+        </div>
+
+        <div class="google-signin-slot">
+          <div id="google-signin-signup"></div>
+        </div>
+
+        <div class="setup-needed-notice google-setup-notice">
+          <strong>🔐 Google Sign-Up</strong><br>
+          To enable real Google OAuth: sign up with email below, then add your Google Client ID in Account settings.
+        </div>
+
+        <div class="divider-or"><span>or fill in your details</span></div>
+
+        <form id="signup-form">
+          <div class="field-row">
+            <div class="field">
+              <label>First Name *</label>
+              <input type="text" id="signup-fname" placeholder="Alex" autocomplete="given-name">
+            </div>
+            <div class="field">
+              <label>Last Name</label>
+              <input type="text" id="signup-lname" placeholder="Rivera" autocomplete="family-name">
+            </div>
+          </div>
+          <div class="field">
+            <label>Email Address *</label>
+            <div class="input-icon-wrap">
+              <input type="email" id="signup-email" placeholder="you@example.com" autocomplete="email">
+              <span class="input-end-icon">✉</span>
+            </div>
+          </div>
+          <div class="field">
+            <label>Password *</label>
+            <div class="input-icon-wrap">
+              <input type="password" id="signup-pass" placeholder="Min. 8 characters" autocomplete="new-password">
+              <span class="input-end-icon" id="signup-pass-toggle">👁</span>
+            </div>
+            <div class="strength-bars">
+              <div class="strength-bar-seg"></div><div class="strength-bar-seg"></div>
+              <div class="strength-bar-seg"></div><div class="strength-bar-seg"></div>
+            </div>
+            <div class="strength-text" id="strength-text"></div>
+          </div>
+          <div class="terms-box" id="terms-box">
+            <div class="terms-check" id="terms-check"></div>
+            <div class="terms-text">
+              I agree to VoyageAI's <a>Terms of Service</a> and <a>Privacy Policy</a>.
+              I'm okay with receiving travel inspiration (unsubscribe anytime).
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width:100%;padding:15px;font-size:15px;border-radius:14px">Create My Account →</button>
+        </form>
+        <div class="trust-line">🔒 Stored locally in your browser · No server</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ╔════ PAGE 3: PLANNER ════╗ -->
+<div id="page-planner" class="page">
+  <div class="planner-layout">
+    <div class="planner-form-col">
+      <div class="page-eyebrow">✦ AI Trip Planner</div>
+      <h2 class="page-title">Build Your Dream Trip</h2>
+      <p class="page-sub">Fill in the 4 sections — our open-source AI model will read everything (especially your special requests) to craft a personalized recommendation.</p>
+
+      <div class="form-card">
+        <div class="section-block">
+          <div class="section-num-badge">1</div>
+          <div class="section-label">Where are you traveling from?</div>
+          <div class="section-hint">Enter your departure city or airport</div>
+          <div class="loc-input-wrap">
+            <span class="loc-pin">📍</span>
+            <input type="text" id="from-input" placeholder="e.g. Raleigh, NC · RDU">
+          </div>
+        </div>
+
+        <div class="section-block">
+          <div class="section-num-badge">2</div>
+          <div class="section-label">What type of trip are you looking for?</div>
+          <div class="section-hint">Choose the vibe that fits your adventure</div>
+          <div class="trip-type-grid">
+            <div class="trip-type-card" data-type="mountains">
+              <div class="trip-type-icon">🏔️</div>
+              <div class="trip-type-name">Mountains</div>
+              <div class="trip-type-desc">Hiking · Ski · Nature</div>
+            </div>
+            <div class="trip-type-card" data-type="beach">
+              <div class="trip-type-icon">🏖️</div>
+              <div class="trip-type-name">Beach</div>
+              <div class="trip-type-desc">Sun · Surf · Relax</div>
+            </div>
+            <div class="trip-type-card" data-type="city">
+              <div class="trip-type-icon">🌆</div>
+              <div class="trip-type-name">City</div>
+              <div class="trip-type-desc">Culture · Food · Arts</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-block">
+          <div class="section-num-badge">3</div>
+          <div class="section-label">What is your total budget?</div>
+          <div class="section-hint">Per person · Flights + hotel + activities</div>
+          <div class="budget-input-wrap">
+            <span class="budget-symbol">$</span>
+            <input type="number" id="budget-input" placeholder="e.g. 1200" min="200" max="50000">
+          </div>
+          <div class="budget-presets">
+            <div class="preset-pill" data-val="500">$500</div>
+            <div class="preset-pill" data-val="1000">$1,000</div>
+            <div class="preset-pill" data-val="2000">$2,000</div>
+            <div class="preset-pill" data-val="3500">$3,500+</div>
+          </div>
+        </div>
+
+        <div class="section-block">
+          <div class="section-num-badge">4</div>
+          <div class="section-label">Any extra requests or must-dos?</div>
+          <div class="section-hint">This text goes directly into the AI prompt — be specific!</div>
+          <textarea class="extras-textarea" id="extras-textarea" placeholder="e.g. &quot;We love seafood and authentic local food. I want to snorkel and see coral reefs. Boutique hotels over big resorts please. Need family-friendly activities for a 7-year-old.&quot;"></textarea>
+          <div class="extras-hint">
+            <span>✓</span> The AI will read every word of this and tailor the destination &amp; activities
+          </div>
+          <div class="suggestion-tags">
+            <div class="suggestion-tag" data-tag="Snorkeling"><span>🤿</span> Snorkeling</div>
+            <div class="suggestion-tag" data-tag="Local Food"><span>🍣</span> Local Food</div>
+            <div class="suggestion-tag" data-tag="Family Friendly"><span>👨‍👩‍👧</span> Family Friendly</div>
+            <div class="suggestion-tag" data-tag="Boutique Hotels"><span>🏨</span> Boutique Hotels</div>
+            <div class="suggestion-tag" data-tag="Photography"><span>📸</span> Photo Spots</div>
+            <div class="suggestion-tag" data-tag="Wellness &amp; Spa"><span>🧘</span> Wellness / Spa</div>
+            <div class="suggestion-tag" data-tag="Nightlife"><span>🎉</span> Nightlife</div>
+            <div class="suggestion-tag" data-tag="Hiking"><span>🥾</span> Hiking</div>
+          </div>
+        </div>
+
+        <div class="gen-section">
+          <button class="btn-generate" id="btn-generate">
+            <span style="font-size:22px">🚀</span>
+            Generate My Vacation with AI
+          </button>
+          <div class="gen-sub">⚡ Powered by <strong>Mistral</strong> (open-source) · free · no API key required</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="planner-side-col">
+      <div class="side-card">
+        <div class="side-title">Trip Summary</div>
+        <div class="summary-row"><div class="s-key">Departing</div><div class="s-val" id="summary-from">—</div></div>
+        <div class="summary-row"><div class="s-key">Trip Type</div><div class="s-val hi" id="summary-type">—</div></div>
+        <div class="summary-row"><div class="s-key">Budget</div><div class="s-val hi" id="summary-budget">—</div></div>
+        <div class="summary-row"><div class="s-key">Extras</div><div class="s-val" id="summary-extras">—</div></div>
+        <div class="summary-row"><div class="s-key">Status</div><div class="s-val">Ready to generate</div></div>
+      </div>
+
+      <div class="ai-side-card">
+        <div class="ai-side-icon">🤖</div>
+        <div class="ai-side-title">Real AI Generation</div>
+        <div class="ai-side-sub">Powered by <strong style="color:#fff">Mistral</strong> — a free, open-source large language model. Your special requests go directly into the AI prompt.</div>
+        <div class="ai-model-tags">
+          <div class="ai-model-tag">Mistral 7B</div>
+          <div class="ai-model-tag">Pollinations.ai</div>
+          <div class="ai-model-tag">Zero API Key</div>
+        </div>
+        <div class="model-indicator">
+          <span class="model-status-dot"></span>
+          AI model online · Ready
+        </div>
+      </div>
+
+      <div class="side-card tips-card">
+        <div class="side-title">Pro Tips</div>
+        <div class="tip-item">
+          <span class="tip-emoji">💡</span>
+          <div class="tip-body"><strong>Write specifics</strong> in section 4 — the AI reads every word.</div>
+        </div>
+        <div class="tip-item">
+          <span class="tip-emoji">🔄</span>
+          <div class="tip-body"><strong>Not happy?</strong> Regenerate for a different destination.</div>
+        </div>
+        <div class="tip-item">
+          <span class="tip-emoji">🧠</span>
+          <div class="tip-body"><strong>How it works:</strong> your inputs build a prompt sent to an open-source model.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ╔════ PAGE 4: RESULTS ════╗ -->
+<div id="page-results" class="page">
+  <div class="result-hero">
+    <div class="orb result-hero-orb1"></div>
+    <div class="orb result-hero-orb2"></div>
+    <div class="hero-grid"></div>
+    <div class="result-hero-inner">
+      <div style="flex:1;min-width:0">
+        <div class="ai-gen-badge" id="result-ai-badge">✦ AI Generated</div>
+        <div class="dest-big-name" id="result-dest-name">Loading…</div>
+        <div class="dest-country" id="result-dest-country"></div>
+        <div class="dest-why" id="result-why"></div>
+        <div class="dest-tag-row" id="result-dest-tags"></div>
+      </div>
+      <div class="match-score-card">
+        <div class="match-num" id="result-match">—%</div>
+        <div class="match-lbl">AI Match Score</div>
+        <div class="match-sub">Based on your requests</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="result-body">
+    <div class="result-main">
+      <!-- Illustration + Interactive Map -->
+      <div class="media-row">
+        <div class="dest-illustration" id="dest-illustration">
+          <div class="illus-sky"></div>
+          <div class="illus-ocean"></div>
+          <div class="illus-sand"></div>
+          <div class="illus-sun"></div>
+          <div class="illus-palm" style="left:30px">🌴</div>
+          <div class="illus-palm" style="right:40px;font-size:32px">🌴</div>
+          <div class="illus-emoji">🏖️</div>
+          <div class="illus-caption">📸 Your destination</div>
+        </div>
+        <div id="leaflet-map"></div>
+      </div>
+
+      <div class="info-cards-row">
+        <div class="info-card">
+          <div class="info-card-icon">✈️</div>
+          <div class="info-card-lbl">Best Flight</div>
+          <div class="info-card-val" id="ic-flight">—</div>
+          <div class="info-card-sub" id="ic-flight-sub">—</div>
+        </div>
+        <div class="info-card">
+          <div class="info-card-icon">🏨</div>
+          <div class="info-card-lbl">Top Hotel</div>
+          <div class="info-card-val" id="ic-hotel">—</div>
+          <div class="info-card-sub" id="ic-hotel-sub" style="font-size:10px">—</div>
+        </div>
+        <div class="info-card">
+          <div class="info-card-icon">🌡️</div>
+          <div class="info-card-lbl">Weather</div>
+          <div class="info-card-val" id="ic-weather">—</div>
+          <div class="info-card-sub" id="ic-weather-sub">—</div>
+        </div>
+        <div class="info-card">
+          <div class="info-card-icon">⭐</div>
+          <div class="info-card-lbl">Rating</div>
+          <div class="info-card-val" id="ic-rating">—</div>
+          <div class="info-card-sub" id="ic-reviews">—</div>
+        </div>
+      </div>
+
+      <div>
+        <div class="section-hdr">
+          Recommended Activities
+          <button class="see-all-btn">See all →</button>
+        </div>
+        <div class="activities-grid" id="activities-grid"></div>
+      </div>
+    </div>
+
+    <div class="result-side">
+      <div class="side-card">
+        <div class="side-title">Estimated Budget</div>
+        <div class="budget-donut-wrap">
+          <div class="donut-ring" id="budget-donut">
+            <div class="donut-inner">
+              <div class="donut-pct" id="donut-pct">—%</div>
+              <div class="donut-sub">used</div>
+            </div>
+          </div>
+          <div class="budget-total-display" id="budget-total-display">$—</div>
+          <div class="budget-total-sub" id="budget-total-sub">of your budget</div>
+        </div>
+        <div id="budget-breakdown" style="margin-top:14px"></div>
+      </div>
+
+      <div class="side-card">
+        <div class="side-title">Top Recommendations</div>
+        <div id="recommendations-list"></div>
+      </div>
+
+      <div class="result-actions">
+        <button class="btn btn-primary" id="btn-save-trip">💾 Save This Trip</button>
+        <button class="btn btn-dark" id="btn-view-costs">📊 View Cost Breakdown</button>
+        <button class="btn btn-outline" id="btn-regen">🔄 Regenerate Results</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ╔════ PAGE 5: COST BREAKDOWN ════╗ -->
+<div id="page-costs" class="page">
+  <div class="costs-header">
+    <div class="costs-header-left">
+      <div class="trip-ref" id="costs-trip-ref">Loading…</div>
+      <div class="costs-title">📊 Cost Breakdown &amp; Trip Manager</div>
+    </div>
+    <div class="costs-stats">
+      <div><div class="cs-stat-val" id="ch-total">$—</div><div class="cs-stat-lbl">Current Total</div></div>
+      <div><div class="cs-stat-val" id="ch-under">$—</div><div class="cs-stat-lbl">Budget Status</div></div>
+      <div><div class="cs-stat-val" id="ch-count">—</div><div class="cs-stat-lbl">Items Included</div></div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center">
+      <button class="btn btn-outline" style="color:#fff;border-color:rgba(255,255,255,0.3)" onclick="VoyageAI.navigate('results')">← Back</button>
+      <button class="btn btn-primary" id="btn-export">📤 Export Itinerary</button>
+    </div>
+  </div>
+
+  <div class="costs-body">
+    <div class="costs-main">
+      <div class="cost-cat" id="cat-flights">
+        <div class="cost-cat-header">
+          <div class="cost-cat-icon" style="background:rgba(255,107,53,0.12)">✈️</div>
+          <div class="cost-cat-info">
+            <div class="cost-cat-name">Flights</div>
+            <div class="cost-cat-sub">1 roundtrip</div>
+          </div>
+          <div class="cost-cat-total" style="color:var(--orange)">$—</div>
+        </div>
+        <div class="items-container"></div>
+      </div>
+
+      <div class="cost-cat" id="cat-hotel">
+        <div class="cost-cat-header">
+          <div class="cost-cat-icon" style="background:rgba(66,133,244,0.12)">🏨</div>
+          <div class="cost-cat-info">
+            <div class="cost-cat-name">Accommodation</div>
+            <div class="cost-cat-sub">4 nights</div>
+          </div>
+          <div class="cost-cat-total" style="color:var(--blue-accent)">$—</div>
+        </div>
+        <div class="items-container"></div>
+      </div>
+
+      <div class="cost-cat" id="cat-activities">
+        <div class="cost-cat-header">
+          <div class="cost-cat-icon" style="background:rgba(0,212,170,0.12)">🎉</div>
+          <div class="cost-cat-info">
+            <div class="cost-cat-name">Activities</div>
+            <div class="cost-cat-sub">—</div>
+          </div>
+          <div class="cost-cat-total" style="color:var(--teal-dark)">$—</div>
+        </div>
+        <div class="items-container"></div>
+      </div>
+
+      <div class="cost-cat" id="cat-misc">
+        <div class="cost-cat-header">
+          <div class="cost-cat-icon" style="background:rgba(255,209,102,0.25)">🍽️</div>
+          <div class="cost-cat-info">
+            <div class="cost-cat-name">Food &amp; Misc</div>
+            <div class="cost-cat-sub">Estimated daily spend</div>
+          </div>
+          <div class="cost-cat-total" style="color:#c8920a">$—</div>
+        </div>
+        <div class="items-container"></div>
+      </div>
+    </div>
+
+    <div class="costs-side">
+      <div class="side-card">
+        <div class="side-title">Spending Overview</div>
+        <div id="cost-bars"></div>
+        <div class="totals-section">
+          <div class="tot-row"><div class="tot-key">Subtotal</div><div class="tot-val" id="costs-total-display">$—</div></div>
+          <div class="tot-row"><div class="tot-key">Removed items</div><div class="tot-val" style="color:var(--teal-dark)" id="costs-savings">$0</div></div>
+          <div class="tot-row grand"><div class="tot-key">Total Estimate</div><div class="tot-val" id="costs-grand-total">$—</div></div>
+        </div>
+        <div class="savings-banner hidden" id="savings-banner">
+          <span style="font-size:18px">🎉</span>
+          <div class="savings-text"></div>
+        </div>
+        <div class="over-banner hidden" id="over-banner">
+          <span style="font-size:18px">⚠️</span>
+          <div class="savings-text"></div>
+        </div>
+        <div class="budget-meter">
+          <div class="budget-meter-lbl"><span>Budget used</span><strong id="meter-label-used">$0 / $0</strong></div>
+          <div class="meter-track"><div class="meter-fill" id="meter-fill" style="width:0%"></div></div>
+        </div>
+      </div>
+
+      <div class="ai-tips-dark">
+        <div class="side-title">💡 AI Cost Tips</div>
+        <div class="ai-tip-row"><div class="ai-tip-emoji">📅</div><div class="ai-tip-text">Flexible dates? Shifting by 2 days often saves $40–80 on flights.</div></div>
+        <div class="ai-tip-row"><div class="ai-tip-emoji">🏨</div><div class="ai-tip-text">AirBnB alternatives usually save 30–40% but lose on-site amenities.</div></div>
+        <div class="ai-tip-row"><div class="ai-tip-emoji">🎫</div><div class="ai-tip-text">Book activities on arrival — typically 15–20% cheaper than online.</div></div>
+      </div>
+
+      <div class="cta-booking-card">
+        <div class="cta-booking-icon">🗺️</div>
+        <div class="cta-booking-title">Ready to Book?</div>
+        <div class="cta-booking-sub">Lock in these prices before they change.</div>
+        <button class="btn-book-now" id="btn-book-now">🚀 Book This Trip Now</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ╔════ MY TRIPS ════╗ -->
+<div id="page-mytrips" class="page">
+  <div class="my-trips-layout">
+    <div class="page-eyebrow">✦ Your Saved Trips</div>
+    <h2 class="page-title">My Trips</h2>
+    <p class="page-sub">All your AI-generated travel plans in one place. Click any trip to load it.</p>
+    <div class="trips-grid" id="trips-grid"></div>
+  </div>
+</div>
+
+
+<!-- ╔════ ACCOUNT PAGE ════╗ -->
+<div id="page-account" class="page">
+  <div class="account-layout">
+    <div class="account-header">
+      <div class="account-avatar" id="account-avatar">?</div>
+      <div class="account-info">
+        <h1 id="account-name">User Name</h1>
+        <p id="account-email">email@example.com</p>
+        <div class="account-meta">
+          <span class="chip" id="account-provider">✉️ Email Account</span>
+          <span class="chip" id="account-joined">Joined —</span>
+          <span class="chip"><span id="account-trips-count">0</span> saved trips</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Profile -->
+    <div class="account-section">
+      <h2>Profile Information</h2>
+      <div class="account-section-sub">Update your display name and email address.</div>
+      <div class="field-row">
+        <div class="field">
+          <label>Full Name</label>
+          <input type="text" id="profile-name">
+        </div>
+        <div class="field">
+          <label>Email Address</label>
+          <input type="email" id="profile-email">
+        </div>
+      </div>
+      <button class="btn btn-primary" id="save-profile-btn">Save Changes</button>
+    </div>
+
+    <!-- Google OAuth Setup -->
+    <div class="account-section">
+      <h2>🔐 Google Sign-In <span id="google-status" style="margin-left:10px;font-size:12px;font-weight:400"></span></h2>
+      <div class="account-section-sub">
+        Paste your Google OAuth 2.0 Client ID below to enable real Google Sign-In on the login page.
+        This is <strong>optional</strong> — email login works without it.
+      </div>
+      <div class="setup-steps">
+        <strong>How to get a Client ID (5 minutes):</strong>
+        <ol>
+          <li>Go to <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener">Google Cloud Console → Credentials</a></li>
+          <li>Click <strong>Create Credentials → OAuth 2.0 Client ID</strong> → Web application</li>
+          <li>Under <strong>Authorized JavaScript origins</strong>, add:
+            <br><code>http://localhost:8080</code> (or whatever port you're using)
+            <br><code>http://127.0.0.1:8080</code>
+          </li>
+          <li>Copy the generated Client ID (looks like <code>123456789-abc...apps.googleusercontent.com</code>)</li>
+          <li>Paste it below and click Save</li>
+        </ol>
+      </div>
+      <div class="field">
+        <label>Google OAuth 2.0 Client ID</label>
+        <input type="text" id="google-client-id-input" placeholder="e.g. 1234-abc.apps.googleusercontent.com">
+        <div class="field-help">Stored only in your browser. Clear it anytime to disable Google Sign-In.</div>
+      </div>
+      <button class="btn btn-primary" id="save-google-btn">Save &amp; Enable</button>
+    </div>
+
+    <!-- AI Model Info -->
+    <div class="account-section">
+      <h2>🤖 AI Model</h2>
+      <div class="account-section-sub">
+        VoyageAI uses <strong>Mistral</strong> — a free, open-source large language model — served through the
+        <a href="https://pollinations.ai" target="_blank" rel="noopener">Pollinations.ai</a> public API.
+        No API key or signup is required. Trips are generated in real-time from your inputs.
+      </div>
+      <div style="padding:14px;background:var(--cream);border-radius:var(--r-md);font-size:13px;color:var(--text-secondary);line-height:1.6">
+        <strong style="color:var(--navy)">Privacy note:</strong> Your inputs (trip type, budget, special requests) are sent to the
+        Pollinations.ai API to generate your trip. No personal data (name, email) is transmitted. If the API is
+        unavailable, VoyageAI falls back to a local smart-matcher that still uses your text input.
+      </div>
+    </div>
+
+    <!-- Sign Out -->
+    <div class="account-section">
+      <h2>Account</h2>
+      <div class="account-section-sub">Sign out of VoyageAI on this device.</div>
+      <button class="btn btn-dark" id="account-logout-btn">Sign Out</button>
+    </div>
+
+    <!-- Danger Zone -->
+    <div class="account-section danger-zone">
+      <h2>⚠️ Danger Zone</h2>
+      <div class="account-section-sub">Delete all your local data including saved trips, preferences, and settings. This cannot be undone.</div>
+      <button class="btn btn-danger" id="clear-data-btn">Clear All My Data</button>
+    </div>
+  </div>
+</div>
+
+
+<script src="js/app.js"></script>
+<script src="js/pages.js"></script>
+</body>
+</html>
