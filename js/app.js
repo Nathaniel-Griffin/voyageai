@@ -11,7 +11,7 @@ const VoyageAI = {
   tripPrefs: { from: '', tripType: '', budget: '', extras: [], extrasText: '' },
   currentTrip: null,
   savedTrips: [],
-  settings: { googleClientId: '' },
+  settings: { googleClientId: '123456789-abcdefg.apps.googleusercontent.com' },
 
   init() {
     this.loadState();
